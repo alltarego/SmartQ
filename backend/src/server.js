@@ -1,8 +1,10 @@
 const express = require("express");
+const cors = require("cors");
 const db = require("./database");
 
 const app = express();
 
+app.use(cors());
 app.use(express.json());
 
 app.get("/", (req, res) => {
@@ -353,6 +355,39 @@ app.post("/senhas/:id/cancelar", async (req, res) => {
 
         res.status(500).json({
             erro: "Erro ao cancelar senha"
+        });
+    }
+});
+
+app.get("/senhas/:id", async (req, res) => {
+    const senhaId = parseInt(req.params.id);
+
+    try {
+        const [senhasEncontradas] = await db.query(
+            `SELECT
+                id,
+                fila_id AS filaId,
+                codigo,
+                status,
+                criado_em AS criadoEm
+             FROM senhas
+             WHERE id = ?`,
+            [senhaId]
+        );
+
+        if (senhasEncontradas.length === 0) {
+            return res.status(404).json({
+                erro: "Senha não encontrada"
+            });
+        }
+
+        res.json(senhasEncontradas[0]);
+
+    } catch (erro) {
+        console.error(erro);
+
+        res.status(500).json({
+            erro: "Erro ao buscar senha"
         });
     }
 });

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>SmartQ - Painel de Atendimento</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <main class="container">
+
+        <header>
+            <h1>SmartQ</h1>
+            <p>Painel de Atendimento</p>
+        </header>
+
+        <section class="painel">
+
+            <div class="campo">
+                <label for="filaSelect">Fila</label>
+
+                <select id="filaSelect">
+                    <option value="">Carregando filas...</option>
+                </select>
+            </div>
+
+            <div class="senha-atual">
+                <span>Senha atual</span>
+                <strong id="senhaAtual">-</strong>
+            </div>
+
+            <div class="informacoes">
+
+                <p>
+                    Pessoas aguardando:
+                    <strong id="quantidadeAguardando">0</strong>
+                </p>
+
+                <p>
+                    Próxima senha:
+                    <strong id="proximaSenha">-</strong>
+                </p>
+
+            </div>
+
+            <div class="acoes">
+
+                <button id="btnChamar">
+                    Chamar próxima
+                </button>
+
+                <button id="btnFinalizar">
+                    Finalizar atendimento
+                </button>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>

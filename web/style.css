@@ -1,0 +1,91 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    color: #222;
+}
+
+.container {
+    width: 100%;
+    max-width: 600px;
+    margin: 50px auto;
+    padding: 20px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+header h1 {
+    font-size: 36px;
+}
+
+header p {
+    margin-top: 5px;
+    color: #666;
+}
+
+.painel {
+    background-color: white;
+    padding: 30px;
+    border-radius: 10px;
+}
+
+.campo {
+    margin-bottom: 30px;
+}
+
+.campo label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+.campo select {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+}
+
+.senha-atual {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.senha-atual span {
+    display: block;
+    margin-bottom: 10px;
+    color: #666;
+}
+
+.senha-atual strong {
+    font-size: 48px;
+}
+
+.informacoes {
+    margin-bottom: 30px;
+}
+
+.informacoes p {
+    margin-bottom: 10px;
+}
+
+.acoes {
+    display: flex;
+    gap: 10px;
+}
+
+.acoes button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 5px;
+    font-size: 15px;
+    cursor: pointer;
+}
