@@ -6,6 +6,9 @@ const quantidadeAguardando = document.getElementById("quantidadeAguardando");
 const proximaSenha = document.getElementById("proximaSenha");
 const btnChamar = document.getElementById("btnChamar");
 const btnFinalizar = document.getElementById("btnFinalizar");
+const painelFilaSelect = document.getElementById("painelFilaSelect");
+const btnAtualizarPainel = document.getElementById("btnAtualizarPainel");
+const mensagemPainel = document.getElementById("mensagemPainel");
 
 async function carregarFilas() {
     try {
@@ -19,6 +22,8 @@ async function carregarFilas() {
 
         filaSelect.innerHTML = "";
 
+        painelFilaSelect.innerHTML = "";
+
         filas.forEach((fila) => {
             const option = document.createElement("option");
 
@@ -26,6 +31,13 @@ async function carregarFilas() {
             option.textContent = fila.nome;
 
             filaSelect.appendChild(option);
+
+            const optionPainel = document.createElement("option");
+
+            optionPainel.value = fila.id;
+            optionPainel.textContent = fila.nome;
+
+            painelFilaSelect.appendChild(optionPainel);
         });
 
         carregarStatusFila();
@@ -123,9 +135,54 @@ async function finalizarAtendimento() {
     }
 }
 
+async function atualizarPainelIoT() {
+    const filaId = parseInt(painelFilaSelect.value);
+
+    if (!filaId) {
+        return;
+    }
+
+    try {
+        const resposta = await fetch(
+            `${API_URL}/paineis/1/fila`,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    filaId: filaId
+                })
+            }
+        );
+
+        const dados = await resposta.json();
+
+        if (!resposta.ok) {
+            mensagemPainel.textContent =
+                dados.erro ?? "Erro ao atualizar painel";
+            return;
+        }
+
+        mensagemPainel.textContent =
+            "Painel atualizado com sucesso";
+
+    } catch (erro) {
+        console.error(erro);
+
+        mensagemPainel.textContent =
+            "Erro ao atualizar painel";
+    }
+}
+
 filaSelect.addEventListener("change", carregarStatusFila);
 btnChamar.addEventListener("click", chamarProxima);
 btnFinalizar.addEventListener("click", finalizarAtendimento);
+
+btnAtualizarPainel.addEventListener(
+    "click",
+    atualizarPainelIoT
+);
 
 carregarFilas();
 

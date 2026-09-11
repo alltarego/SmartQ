@@ -21,6 +21,7 @@
 
         <section class="painel">
 
+            <!-- Seleção da fila de atendimento -->
             <div class="campo">
                 <label for="filaSelect">Fila</label>
 
@@ -29,11 +30,13 @@
                 </select>
             </div>
 
+            <!-- Senha atualmente chamada -->
             <div class="senha-atual">
                 <span>Senha atual</span>
                 <strong id="senhaAtual">-</strong>
             </div>
 
+            <!-- Informações da fila -->
             <div class="informacoes">
 
                 <p>
@@ -48,6 +51,7 @@
 
             </div>
 
+            <!-- Ações do atendente -->
             <div class="acoes">
 
                 <button id="btnChamar">
@@ -57,6 +61,31 @@
                 <button id="btnFinalizar">
                     Finalizar atendimento
                 </button>
+
+            </div>
+
+            <!-- Configuração do painel IoT -->
+            <hr class="separador">
+
+            <div class="painel-iot">
+
+                <h2>Painel</h2>
+
+                <div class="campo">
+                    <label for="painelFilaSelect">
+                        Fila exibida no painel
+                    </label>
+
+                    <select id="painelFilaSelect">
+                        <option value="">Carregando filas...</option>
+                    </select>
+                </div>
+
+                <button id="btnAtualizarPainel" class="btn-iot">
+                    Atualizar painel
+                </button>
+
+                <p id="mensagemPainel" class="mensagem-painel"></p>
 
             </div>
 
