@@ -447,6 +447,59 @@ app.get("/paineis/:id/status", async (req, res) => {
     }
 });
 
+app.put("/paineis/:id/fila", async (req, res) => {
+    const painelId = parseInt(req.params.id);
+    const { filaId } = req.body;
+
+    if (!filaId) {
+        return res.status(400).json({
+            erro: "O ID da fila é obrigatório"
+        });
+    }
+
+    try {
+        const [paineisEncontrados] = await db.query(
+            "SELECT id FROM paineis WHERE id = ?",
+            [painelId]
+        );
+
+        if (paineisEncontrados.length === 0) {
+            return res.status(404).json({
+                erro: "Painel não encontrado"
+            });
+        }
+
+        const [filasEncontradas] = await db.query(
+            "SELECT id FROM filas WHERE id = ?",
+            [filaId]
+        );
+
+        if (filasEncontradas.length === 0) {
+            return res.status(404).json({
+                erro: "Fila não encontrada"
+            });
+        }
+
+        await db.query(
+            "UPDATE paineis SET fila_id = ? WHERE id = ?",
+            [filaId, painelId]
+        );
+
+        res.json({
+            mensagem: "Fila do painel atualizada com sucesso",
+            painelId: painelId,
+            filaId: filaId
+        });
+
+    } catch (erro) {
+        console.error(erro);
+
+        res.status(500).json({
+            erro: "Erro ao atualizar fila do painel"
+        });
+    }
+});
+
 
 const PORT = 3000;
 
