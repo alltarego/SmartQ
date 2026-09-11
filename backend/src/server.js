@@ -392,6 +392,61 @@ app.get("/senhas/:id", async (req, res) => {
     }
 });
 
+app.get("/paineis/:id/status", async (req, res) => {
+    const painelId = parseInt(req.params.id);
+
+    try {
+        const [paineisEncontrados] = await db.query(
+            `SELECT
+                paineis.id,
+                paineis.nome AS painel,
+                filas.id AS filaId,
+                filas.nome AS fila,
+                filas.status AS statusFila
+             FROM paineis
+             INNER JOIN filas
+                ON filas.id = paineis.fila_id
+             WHERE paineis.id = ?`,
+            [painelId]
+        );
+
+        if (paineisEncontrados.length === 0) {
+            return res.status(404).json({
+                erro: "Painel não encontrado"
+            });
+        }
+
+        const painel = paineisEncontrados[0];
+
+        const [senhaAtualResultado] = await db.query(
+            `SELECT codigo
+             FROM senhas
+             WHERE fila_id = ? AND status = 'chamando'
+             ORDER BY id
+             LIMIT 1`,
+            [painel.filaId]
+        );
+
+        res.json({
+            painel: painel.painel,
+            filaId: painel.filaId,
+            fila: painel.fila,
+            statusFila: painel.statusFila,
+            senhaAtual:
+                senhaAtualResultado.length > 0
+                    ? senhaAtualResultado[0].codigo
+                    : null
+        });
+
+    } catch (erro) {
+        console.error(erro);
+
+        res.status(500).json({
+            erro: "Erro ao buscar status do painel"
+        });
+    }
+});
+
 
 const PORT = 3000;
 

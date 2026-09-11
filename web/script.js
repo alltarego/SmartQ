@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:3000";
+const API_URL = "https://smartq-production-319f.up.railway.app";
 
 const filaSelect = document.getElementById("filaSelect");
 const senhaAtual = document.getElementById("senhaAtual");

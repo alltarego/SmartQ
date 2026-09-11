@@ -29,7 +29,7 @@ class FilasPage extends StatefulWidget {
 }
 
 class _FilasPageState extends State<FilasPage> {
-  final String apiUrl = 'http://localhost:3000';
+  final String apiUrl = 'https://smartq-production-319f.up.railway.app';
 
   List<dynamic> filas = [];
   bool carregando = true;
@@ -145,7 +145,7 @@ class FilaPage extends StatefulWidget {
 }
 
 class _FilaPageState extends State<FilaPage> {
-  final String apiUrl = 'http://localhost:3000';
+  final String apiUrl = 'https://smartq-production-319f.up.railway.app';
 
   bool carregando = false;
   Map<String, dynamic>? senha;
