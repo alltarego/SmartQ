@@ -220,6 +220,44 @@ app.post("/auth/login", async (req, res) => {
 });
 
 
+// Consultar usuário autenticado
+app.get(
+    "/auth/me",
+    autenticar,
+    async (req, res) => {
+        try {
+            const [usuarios] = await db.query(
+                `SELECT
+                    id,
+                    nome,
+                    email,
+                    tipo
+                 FROM usuarios
+                 WHERE id = ?`,
+                [req.usuario.id]
+            );
+
+            if (usuarios.length === 0) {
+                return res.status(404).json({
+                    erro: "Usuário não encontrado"
+                });
+            }
+
+            res.json({
+                usuario: usuarios[0]
+            });
+
+        } catch (erro) {
+            console.error(erro);
+
+            res.status(500).json({
+                erro: "Erro ao buscar usuário"
+            });
+        }
+    }
+);
+
+
 // ======================================================
 // FILAS
 // ======================================================
@@ -369,16 +407,15 @@ app.put(
                 });
             }
 
-            // Cancela senhas que ainda estavam aguardando
-            const [resultadoCancelamento] = await conexao.query(
-                `UPDATE senhas
-                 SET status = 'cancelado'
-                 WHERE fila_id = ?
-                   AND status = 'aguardando'`,
-                [filaId]
-            );
+            const [resultadoCancelamento] =
+                await conexao.query(
+                    `UPDATE senhas
+                     SET status = 'cancelado'
+                     WHERE fila_id = ?
+                       AND status = 'aguardando'`,
+                    [filaId]
+                );
 
-            // Reinicia a numeração
             await conexao.query(
                 `UPDATE filas
                  SET proximo_numero = 1
@@ -392,7 +429,8 @@ app.put(
                 mensagem: "Fila reiniciada com sucesso",
                 filaId,
                 proximoNumero: 1,
-                senhasCanceladas: resultadoCancelamento.affectedRows
+                senhasCanceladas:
+                    resultadoCancelamento.affectedRows
             });
 
         } catch (erro) {
@@ -418,96 +456,202 @@ app.put(
 
 
 // ======================================================
-// SENHAS
+// SENHAS DO USUÁRIO
 // ======================================================
 
-// Criar senha
-app.post("/filas/:id/senhas", async (req, res) => {
-    const filaId = parseInt(req.params.id);
+// Buscar senha ativa do usuário autenticado
+app.get(
+    "/minha-senha",
+    autenticar,
+    async (req, res) => {
+        try {
+            const [senhas] = await db.query(
+                `SELECT
+                    senhas.id,
+                    senhas.fila_id AS filaId,
+                    filas.nome AS filaNome,
+                    senhas.codigo,
+                    senhas.status,
+                    senhas.criado_em AS criadoEm
+                 FROM senhas
+                 INNER JOIN filas
+                    ON filas.id = senhas.fila_id
+                 WHERE senhas.usuario_id = ?
+                   AND senhas.status IN ('aguardando', 'chamando')
+                 ORDER BY senhas.id DESC
+                 LIMIT 1`,
+                [req.usuario.id]
+            );
 
-    let conexao;
+            if (senhas.length === 0) {
+                return res.json({
+                    senha: null
+                });
+            }
 
-    try {
-        conexao = await db.getConnection();
-
-        await conexao.beginTransaction();
-
-        const [filasEncontradas] = await conexao.query(
-            `SELECT
-                id,
-                status,
-                proximo_numero
-             FROM filas
-             WHERE id = ?
-             FOR UPDATE`,
-            [filaId]
-        );
-
-        if (filasEncontradas.length === 0) {
-            await conexao.rollback();
-
-            return res.status(404).json({
-                erro: "Fila não encontrada"
+            res.json({
+                senha: senhas[0]
             });
-        }
 
-        const fila = filasEncontradas[0];
+        } catch (erro) {
+            console.error(erro);
 
-        if (fila.status !== "aberta") {
-            await conexao.rollback();
-
-            return res.status(400).json({
-                erro: "Esta fila está fechada"
+            res.status(500).json({
+                erro: "Erro ao buscar senha ativa"
             });
-        }
-
-        const numero = fila.proximo_numero;
-
-        const codigo =
-            `A${String(numero).padStart(3, "0")}`;
-
-        const [resultado] = await conexao.query(
-            `INSERT INTO senhas
-             (fila_id, codigo, status)
-             VALUES (?, ?, 'aguardando')`,
-            [filaId, codigo]
-        );
-
-        await conexao.query(
-            `UPDATE filas
-             SET proximo_numero = proximo_numero + 1
-             WHERE id = ?`,
-            [filaId]
-        );
-
-        await conexao.commit();
-
-        res.status(201).json({
-            id: resultado.insertId,
-            filaId,
-            codigo,
-            status: "aguardando"
-        });
-
-    } catch (erro) {
-
-        if (conexao) {
-            await conexao.rollback();
-        }
-
-        console.error(erro);
-
-        res.status(500).json({
-            erro: "Erro ao criar senha"
-        });
-
-    } finally {
-
-        if (conexao) {
-            conexao.release();
         }
     }
-});
+);
+
+
+// Criar senha para o usuário autenticado
+app.post(
+    "/filas/:id/senhas",
+    autenticar,
+    async (req, res) => {
+
+        const filaId = parseInt(req.params.id);
+        const usuarioId = req.usuario.id;
+
+        let conexao;
+
+        try {
+            conexao = await db.getConnection();
+
+            await conexao.beginTransaction();
+
+            // Bloqueia o registro do usuário durante a criação.
+            // Isso reduz o risco de duas requisições simultâneas
+            // criarem duas senhas para a mesma conta.
+            const [usuarios] = await conexao.query(
+                `SELECT id
+                 FROM usuarios
+                 WHERE id = ?
+                 FOR UPDATE`,
+                [usuarioId]
+            );
+
+            if (usuarios.length === 0) {
+                await conexao.rollback();
+
+                return res.status(404).json({
+                    erro: "Usuário não encontrado"
+                });
+            }
+
+            const [senhasAtivas] = await conexao.query(
+                `SELECT
+                    senhas.id,
+                    senhas.fila_id AS filaId,
+                    filas.nome AS filaNome,
+                    senhas.codigo,
+                    senhas.status,
+                    senhas.criado_em AS criadoEm
+                 FROM senhas
+                 INNER JOIN filas
+                    ON filas.id = senhas.fila_id
+                 WHERE senhas.usuario_id = ?
+                   AND senhas.status IN ('aguardando', 'chamando')
+                 ORDER BY senhas.id DESC
+                 LIMIT 1`,
+                [usuarioId]
+            );
+
+            if (senhasAtivas.length > 0) {
+                await conexao.rollback();
+
+                return res.status(409).json({
+                    erro: "Você já possui uma senha ativa",
+                    senha: senhasAtivas[0]
+                });
+            }
+
+            const [filasEncontradas] =
+                await conexao.query(
+                    `SELECT
+                        id,
+                        nome,
+                        status,
+                        proximo_numero
+                     FROM filas
+                     WHERE id = ?
+                     FOR UPDATE`,
+                    [filaId]
+                );
+
+            if (filasEncontradas.length === 0) {
+                await conexao.rollback();
+
+                return res.status(404).json({
+                    erro: "Fila não encontrada"
+                });
+            }
+
+            const fila = filasEncontradas[0];
+
+            if (fila.status !== "aberta") {
+                await conexao.rollback();
+
+                return res.status(400).json({
+                    erro: "Esta fila está fechada"
+                });
+            }
+
+            const numero = fila.proximo_numero;
+
+            const codigo =
+                `A${String(numero).padStart(3, "0")}`;
+
+            const [resultado] = await conexao.query(
+                `INSERT INTO senhas
+                 (fila_id, usuario_id, codigo, status)
+                 VALUES (?, ?, ?, 'aguardando')`,
+                [
+                    filaId,
+                    usuarioId,
+                    codigo
+                ]
+            );
+
+            await conexao.query(
+                `UPDATE filas
+                 SET proximo_numero =
+                    proximo_numero + 1
+                 WHERE id = ?`,
+                [filaId]
+            );
+
+            await conexao.commit();
+
+            res.status(201).json({
+                id: resultado.insertId,
+                filaId,
+                filaNome: fila.nome,
+                usuarioId,
+                codigo,
+                status: "aguardando"
+            });
+
+        } catch (erro) {
+
+            if (conexao) {
+                await conexao.rollback();
+            }
+
+            console.error(erro);
+
+            res.status(500).json({
+                erro: "Erro ao criar senha"
+            });
+
+        } finally {
+
+            if (conexao) {
+                conexao.release();
+            }
+        }
+    }
+);
 
 
 // Listar senhas de uma fila
@@ -530,6 +674,7 @@ app.get("/filas/:id/senhas", async (req, res) => {
             `SELECT
                 id,
                 fila_id AS filaId,
+                usuario_id AS usuarioId,
                 codigo,
                 status,
                 criado_em AS criadoEm
@@ -560,6 +705,7 @@ app.get("/senhas/:id", async (req, res) => {
             `SELECT
                 id,
                 fila_id AS filaId,
+                usuario_id AS usuarioId,
                 codigo,
                 status,
                 criado_em AS criadoEm
@@ -586,64 +732,87 @@ app.get("/senhas/:id", async (req, res) => {
 });
 
 
-// Cancelar senha
-app.post("/senhas/:id/cancelar", async (req, res) => {
-    const senhaId = parseInt(req.params.id);
+// Cancelar senha do usuário autenticado
+app.post(
+    "/senhas/:id/cancelar",
+    autenticar,
+    async (req, res) => {
 
-    try {
-        const [senhasEncontradas] = await db.query(
-            `SELECT
-                id,
-                fila_id AS filaId,
-                codigo,
-                status
-             FROM senhas
-             WHERE id = ?`,
-            [senhaId]
-        );
+        const senhaId = parseInt(req.params.id);
 
-        if (senhasEncontradas.length === 0) {
-            return res.status(404).json({
-                erro: "Senha não encontrada"
+        try {
+            const [senhasEncontradas] = await db.query(
+                `SELECT
+                    id,
+                    fila_id AS filaId,
+                    usuario_id AS usuarioId,
+                    codigo,
+                    status
+                 FROM senhas
+                 WHERE id = ?`,
+                [senhaId]
+            );
+
+            if (senhasEncontradas.length === 0) {
+                return res.status(404).json({
+                    erro: "Senha não encontrada"
+                });
+            }
+
+            const senha = senhasEncontradas[0];
+
+            // Administrador pode cancelar qualquer senha.
+            // Cliente só pode cancelar a própria.
+            if (
+                req.usuario.tipo !== "admin" &&
+                senha.usuarioId !== req.usuario.id
+            ) {
+                return res.status(403).json({
+                    erro: "Você não pode cancelar esta senha"
+                });
+            }
+
+            if (senha.status === "atendido") {
+                return res.status(400).json({
+                    erro: "Não é possível cancelar uma senha já atendida"
+                });
+            }
+
+            if (senha.status === "cancelado") {
+                return res.status(400).json({
+                    erro: "A senha já está cancelada"
+                });
+            }
+
+            if (senha.status === "chamando") {
+                return res.status(400).json({
+                    erro: "Não é possível cancelar uma senha que já foi chamada"
+                });
+            }
+
+            await db.query(
+                `UPDATE senhas
+                 SET status = 'cancelado'
+                 WHERE id = ?`,
+                [senhaId]
+            );
+
+            senha.status = "cancelado";
+
+            res.json({
+                mensagem: "Senha cancelada com sucesso",
+                senha
+            });
+
+        } catch (erro) {
+            console.error(erro);
+
+            res.status(500).json({
+                erro: "Erro ao cancelar senha"
             });
         }
-
-        const senha = senhasEncontradas[0];
-
-        if (senha.status === "atendido") {
-            return res.status(400).json({
-                erro: "Não é possível cancelar uma senha já atendida"
-            });
-        }
-
-        if (senha.status === "cancelado") {
-            return res.status(400).json({
-                erro: "A senha já está cancelada"
-            });
-        }
-
-        await db.query(
-            `UPDATE senhas
-             SET status = 'cancelado'
-             WHERE id = ?`,
-            [senhaId]
-        );
-
-        senha.status = "cancelado";
-
-        res.json({
-            mensagem: "Senha cancelada com sucesso",
-            senha
-        });
-
-    } catch (erro) {
-        console.error(erro);
-
-        res.status(500).json({
-            erro: "Erro ao cancelar senha"
-        });
     }
-});
+);
 
 
 // ======================================================
@@ -696,6 +865,7 @@ app.post(
                 `SELECT
                     id,
                     fila_id AS filaId,
+                    usuario_id AS usuarioId,
                     codigo,
                     status
                  FROM senhas
@@ -712,7 +882,8 @@ app.post(
                 });
             }
 
-            const proximaSenha = senhasAguardando[0];
+            const proximaSenha =
+                senhasAguardando[0];
 
             await db.query(
                 `UPDATE senhas
@@ -764,6 +935,7 @@ app.post(
                 `SELECT
                     id,
                     fila_id AS filaId,
+                    usuario_id AS usuarioId,
                     codigo,
                     status
                  FROM senhas
@@ -780,7 +952,8 @@ app.post(
                 });
             }
 
-            const senhaAtual = senhasChamando[0];
+            const senhaAtual =
+                senhasChamando[0];
 
             await db.query(
                 `UPDATE senhas
@@ -807,7 +980,10 @@ app.post(
 );
 
 
-// Status de uma fila
+// ======================================================
+// STATUS DAS FILAS
+// ======================================================
+
 app.get("/filas/:id/status", async (req, res) => {
     const filaId = parseInt(req.params.id);
 
@@ -831,15 +1007,16 @@ app.get("/filas/:id/status", async (req, res) => {
 
         const fila = filasEncontradas[0];
 
-        const [senhaAtualResultado] = await db.query(
-            `SELECT codigo
-             FROM senhas
-             WHERE fila_id = ?
-               AND status = 'chamando'
-             ORDER BY id
-             LIMIT 1`,
-            [filaId]
-        );
+        const [senhaAtualResultado] =
+            await db.query(
+                `SELECT codigo
+                 FROM senhas
+                 WHERE fila_id = ?
+                   AND status = 'chamando'
+                 ORDER BY id
+                 LIMIT 1`,
+                [filaId]
+            );
 
         const [aguardando] = await db.query(
             `SELECT codigo
@@ -859,14 +1036,16 @@ app.get("/filas/:id/status", async (req, res) => {
                     ? senhaAtualResultado[0].codigo
                     : null,
 
-            quantidadeAguardando: aguardando.length,
+            quantidadeAguardando:
+                aguardando.length,
 
             proximaSenha:
                 aguardando.length > 0
                     ? aguardando[0].codigo
                     : null,
 
-            proximoNumero: fila.proximoNumero
+            proximoNumero:
+                fila.proximoNumero
         });
 
     } catch (erro) {
@@ -908,17 +1087,19 @@ app.get("/paineis/:id/status", async (req, res) => {
             });
         }
 
-        const painel = paineisEncontrados[0];
+        const painel =
+            paineisEncontrados[0];
 
-        const [senhaAtualResultado] = await db.query(
-            `SELECT codigo
-             FROM senhas
-             WHERE fila_id = ?
-               AND status = 'chamando'
-             ORDER BY id
-             LIMIT 1`,
-            [painel.filaId]
-        );
+        const [senhaAtualResultado] =
+            await db.query(
+                `SELECT codigo
+                 FROM senhas
+                 WHERE fila_id = ?
+                   AND status = 'chamando'
+                 ORDER BY id
+                 LIMIT 1`,
+                [painel.filaId]
+            );
 
         res.json({
             painel: painel.painel,
@@ -949,7 +1130,9 @@ app.put(
     somenteAdmin,
     async (req, res) => {
 
-        const painelId = parseInt(req.params.id);
+        const painelId =
+            parseInt(req.params.id);
+
         const { filaId } = req.body;
 
         if (!filaId) {
@@ -959,10 +1142,11 @@ app.put(
         }
 
         try {
-            const [paineisEncontrados] = await db.query(
-                "SELECT id FROM paineis WHERE id = ?",
-                [painelId]
-            );
+            const [paineisEncontrados] =
+                await db.query(
+                    "SELECT id FROM paineis WHERE id = ?",
+                    [painelId]
+                );
 
             if (paineisEncontrados.length === 0) {
                 return res.status(404).json({
@@ -970,10 +1154,11 @@ app.put(
                 });
             }
 
-            const [filasEncontradas] = await db.query(
-                "SELECT id FROM filas WHERE id = ?",
-                [filaId]
-            );
+            const [filasEncontradas] =
+                await db.query(
+                    "SELECT id FROM filas WHERE id = ?",
+                    [filaId]
+                );
 
             if (filasEncontradas.length === 0) {
                 return res.status(404).json({
@@ -985,11 +1170,15 @@ app.put(
                 `UPDATE paineis
                  SET fila_id = ?
                  WHERE id = ?`,
-                [filaId, painelId]
+                [
+                    filaId,
+                    painelId
+                ]
             );
 
             res.json({
-                mensagem: "Fila do painel atualizada com sucesso",
+                mensagem:
+                    "Fila do painel atualizada com sucesso",
                 painelId,
                 filaId
             });
