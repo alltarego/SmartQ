@@ -5,93 +5,303 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>SmartQ - Painel de Atendimento</title>
+    <title>SmartQ - Administração</title>
 
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-    <main class="container">
+    <!-- ==================================================
+         LOGIN
+    =================================================== -->
 
-        <header>
-            <h1>SmartQ</h1>
-            <p>Painel de Atendimento</p>
-        </header>
+    <main id="loginPage" class="login-page">
 
-        <section class="painel">
+        <section class="login-card">
 
-            <!-- Seleção da fila de atendimento -->
-            <div class="campo">
-                <label for="filaSelect">Fila</label>
-
-                <select id="filaSelect">
-                    <option value="">Carregando filas...</option>
-                </select>
+            <div class="logo">
+                <h1>SmartQ</h1>
+                <p>Gerenciamento inteligente de filas</p>
             </div>
 
-            <!-- Senha atualmente chamada -->
-            <div class="senha-atual">
-                <span>Senha atual</span>
-                <strong id="senhaAtual">-</strong>
-            </div>
+            <div class="login-form">
 
-            <!-- Informações da fila -->
-            <div class="informacoes">
+                <h2>Acesso administrativo</h2>
 
-                <p>
-                    Pessoas aguardando:
-                    <strong id="quantidadeAguardando">0</strong>
+                <p class="texto-secundario">
+                    Entre com sua conta de administrador.
                 </p>
-
-                <p>
-                    Próxima senha:
-                    <strong id="proximaSenha">-</strong>
-                </p>
-
-            </div>
-
-            <!-- Ações do atendente -->
-            <div class="acoes">
-
-                <button id="btnChamar">
-                    Chamar próxima
-                </button>
-
-                <button id="btnFinalizar">
-                    Finalizar atendimento
-                </button>
-
-            </div>
-
-            <!-- Configuração do painel IoT -->
-            <hr class="separador">
-
-            <div class="painel-iot">
-
-                <h2>Painel</h2>
 
                 <div class="campo">
-                    <label for="painelFilaSelect">
-                        Fila exibida no painel
-                    </label>
+                    <label for="loginEmail">E-mail</label>
 
-                    <select id="painelFilaSelect">
-                        <option value="">Carregando filas...</option>
-                    </select>
+                    <input
+                        type="email"
+                        id="loginEmail"
+                        placeholder="admin@smartq.com"
+                        autocomplete="email"
+                    >
                 </div>
 
-                <button id="btnAtualizarPainel" class="btn-iot">
-                    Atualizar painel
+                <div class="campo">
+                    <label for="loginSenha">Senha</label>
+
+                    <input
+                        type="password"
+                        id="loginSenha"
+                        placeholder="Sua senha"
+                        autocomplete="current-password"
+                    >
+                </div>
+
+                <button id="btnLogin" class="btn btn-primary btn-full">
+                    Entrar
                 </button>
 
-                <p id="mensagemPainel" class="mensagem-painel"></p>
+                <p id="loginMensagem" class="mensagem"></p>
 
             </div>
 
         </section>
 
     </main>
+
+
+    <!-- ==================================================
+         PAINEL ADMINISTRATIVO
+    =================================================== -->
+
+    <div id="adminPage" class="admin-page oculto">
+
+        <header class="topbar">
+
+            <div>
+                <h1>SmartQ</h1>
+                <span>Painel Administrativo</span>
+            </div>
+
+            <div class="usuario-area">
+
+                <div class="usuario-info">
+                    <strong id="usuarioNome">Administrador</strong>
+                    <span id="usuarioEmail"></span>
+                </div>
+
+                <button id="btnSair" class="btn-sair">
+                    Sair
+                </button>
+
+            </div>
+
+        </header>
+
+
+        <main class="dashboard">
+
+            <!-- ==========================================
+                 FILA ATIVA
+            =========================================== -->
+
+            <section class="card controle-fila">
+
+                <div class="card-header">
+
+                    <div>
+                        <span class="card-label">ATENDIMENTO</span>
+                        <h2>Fila ativa</h2>
+                    </div>
+
+                    <span id="statusFilaBadge" class="badge">
+                        -
+                    </span>
+
+                </div>
+
+
+                <div class="campo">
+
+                    <label for="filaSelect">
+                        Selecione a fila
+                    </label>
+
+                    <select id="filaSelect">
+                        <option value="">
+                            Carregando filas...
+                        </option>
+                    </select>
+
+                    <small>
+                        A fila selecionada também será exibida
+                        automaticamente no painel IoT.
+                    </small>
+
+                </div>
+
+
+                <div class="acoes-fila">
+
+                    <button id="btnAlternarStatus" class="btn btn-secondary">
+                        Abrir / Fechar fila
+                    </button>
+
+                    <button id="btnResetar" class="btn btn-danger-outline">
+                        Reiniciar fila
+                    </button>
+
+                </div>
+
+                <p id="mensagemFila" class="mensagem"></p>
+
+            </section>
+
+
+            <!-- ==========================================
+                 SENHA ATUAL
+            =========================================== -->
+
+            <section class="card senha-card">
+
+                <span class="card-label">
+                    SENHA ATUAL
+                </span>
+
+                <strong id="senhaAtual" class="senha-numero">
+                    -
+                </strong>
+
+                <span class="senha-descricao">
+                    Em atendimento
+                </span>
+
+            </section>
+
+
+            <!-- ==========================================
+                 INFORMAÇÕES
+            =========================================== -->
+
+            <section class="card estatisticas">
+
+                <div class="estatistica">
+
+                    <span>
+                        Pessoas aguardando
+                    </span>
+
+                    <strong id="quantidadeAguardando">
+                        0
+                    </strong>
+
+                </div>
+
+                <div class="estatistica">
+
+                    <span>
+                        Próxima senha
+                    </span>
+
+                    <strong id="proximaSenha">
+                        -
+                    </strong>
+
+                </div>
+
+                <div class="estatistica">
+
+                    <span>
+                        Próximo número
+                    </span>
+
+                    <strong id="proximoNumero">
+                        -
+                    </strong>
+
+                </div>
+
+            </section>
+
+
+            <!-- ==========================================
+                 ATENDIMENTO
+            =========================================== -->
+
+            <section class="card atendimento-card">
+
+                <div class="card-header">
+
+                    <div>
+                        <span class="card-label">
+                            CONTROLE
+                        </span>
+
+                        <h2>
+                            Atendimento
+                        </h2>
+                    </div>
+
+                </div>
+
+                <div class="acoes-atendimento">
+
+                    <button id="btnChamar" class="btn btn-primary">
+                        Chamar próxima
+                    </button>
+
+                    <button id="btnFinalizar" class="btn btn-success">
+                        Finalizar atendimento
+                    </button>
+
+                </div>
+
+                <p id="mensagemAtendimento" class="mensagem"></p>
+
+            </section>
+
+
+            <!-- ==========================================
+                 CRIAR FILA
+            =========================================== -->
+
+            <section class="card nova-fila-card">
+
+                <div class="card-header">
+
+                    <div>
+                        <span class="card-label">
+                            GERENCIAMENTO
+                        </span>
+
+                        <h2>
+                            Criar nova fila
+                        </h2>
+                    </div>
+
+                </div>
+
+                <div class="nova-fila-form">
+
+                    <input
+                        type="text"
+                        id="novaFilaNome"
+                        placeholder="Ex.: Atendimento Geral"
+                        maxlength="100"
+                    >
+
+                    <button id="btnCriarFila" class="btn btn-secondary">
+                        Criar fila
+                    </button>
+
+                </div>
+
+                <p id="mensagemNovaFila" class="mensagem"></p>
+
+            </section>
+
+        </main>
+
+    </div>
+
 
     <script src="script.js"></script>
 
