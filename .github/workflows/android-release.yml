@@ -1,0 +1,48 @@
+name: Build Android APK
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.47.1"
+          cache: true
+
+      - name: Instalar dependencias
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Gerar APK
+        working-directory: mobile
+        run: flutter build apk --release
+
+      - name: Renomear APK
+        run: |
+          cp mobile/build/app/outputs/flutter-apk/app-release.apk SmartQ-${{ github.ref_name }}.apk
+
+      - name: Publicar APK na Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: SmartQ-${{ github.ref_name }}.apk
+          generate_release_notes: true
